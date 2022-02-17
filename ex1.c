@@ -85,8 +85,6 @@ int main(int argc, char *argv[], char **envp){
 		else{
 			int ret;
 			ret = fork();
-//			printf("[%d] %s\n",%ret, arglist[0]);
-//			fflush(stdout);
 			int stat;
 			int waitstat;
 			if(ret != 0){
@@ -111,7 +109,7 @@ int main(int argc, char *argv[], char **envp){
         int test = waitpid(-1,&tmpretstat,WNOHANG);
 		if(test > 0){
           //int bgstat;
-          int something = waitpid(test,NULL,WUNTRACED);
+          waitpid(test,NULL,WUNTRACED);
           printf("[%d] Exited %d \n",test,tmpretstat);
         }
         //printf("this -> %d\n", test);
