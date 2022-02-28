@@ -30,6 +30,16 @@ int main(int argc, char *argv[], char **envp){
 		printf("%s",prompt);
 		//Get input from user
 		fgets(cmd, MAX_CMD_SIZE, stdin);
+        	int tmpretstat;
+		int printwhatexited = 0;
+	        int test = waitpid(-1,&tmpretstat,WNOHANG);
+		//If a process has exited print out it's pid and status
+		if(test > 0){
+	          //int bgstat;
+	          printwhatexited = 1;
+	          waitpid(test,NULL,WUNTRACED);
+//	          printf("[%d] Exited %d \n",test,tmpretstat);
+	        }
 		//Remove the newline and carage return
 		cmd[strcspn(cmd,"\n\r")] = 0;
 		int index;
@@ -71,7 +81,7 @@ int main(int argc, char *argv[], char **envp){
 		//If the last argument is an & meaning we want to background it
         	if(strcmp(arglist[argcount-1],"&") == 0)
 		{
-			background = 1;arglist[argcount-1] = NULL;
+			background = 1;arglist[argcount-1] = NULL;argcount--;
 		}
 		//Check for the basic pid,ppid,cd,pwd,exit commands
 		if(strcmp(arglist[0], "pid") == 0){
@@ -91,7 +101,7 @@ int main(int argc, char *argv[], char **envp){
 		else if(strcmp(arglist[0],"pwd") == 0){
 			char tmpcwd[100];
 			getcwd(tmpcwd, 100);
-			printf("%s\n",tmpcwd);	
+			printf("%s/\n",tmpcwd);	
 		}
 		else if(strcmp(arglist[0],"exit") == 0){
 			getout = 1;
@@ -112,8 +122,8 @@ int main(int argc, char *argv[], char **envp){
 				fflush(stdout);
 				//If we don't want to background it waitpid(-1) to stall
 				if(!background){
-                 		   waitpid(-1,&waitstat,0);
-				  printf("[%d] %s Exited %d\n",ret, arglist[0], waitstat);
+                 		  int nonbgret = waitpid(ret,&waitstat,0);
+				  printf("[%d] %s Exit %d\n",ret, arglist[0], waitstat);
 				  fflush(stdout);
 		                }
 				//If we do want to background call it with WNOHANG
@@ -125,21 +135,29 @@ int main(int argc, char *argv[], char **envp){
 		       else{
 				//Call execvp to try and find the command in the path
 				stat = execvp(arglist[0], arglist);
-				//If there was an error in execvp handle it
+				//If there was an error in execvp handle it and exit the child process
 				if(stat < 0){ printf("Cannot exec %s: No such file or directory\n",arglist[0]); exit(1);}
-	   		        if(background){printf("[%d] %s Exited %d\n",getpid(),arglist[0], stat);}
             		}
 			
 	    }
-	//Check if a background process exited since last command was run
-        int tmpretstat;
-        int test = waitpid(-1,&tmpretstat,WNOHANG);
+	//If we need to print something about a backgrounded process
+	if(printwhatexited){
+		printf("[%d] Exit %d \n",test,tmpretstat);
+		printwhatexited = 0;
+	}
+	int killstat = -1;
+	int killid = waitpid(-1,&killstat,WNOHANG);
 	//If a process has exited print out it's pid and status
-	if(test > 0){
-          //int bgstat;
-          waitpid(test,NULL,WUNTRACED);
-          printf("[%d] Exited %d \n",test,tmpretstat);
-        }
+	if(killid > 0){
+	        waitpid(killid,NULL,WUNTRACED);
+		if(killstat != 15){
+			printf("IN HERE\n");
+			printf("[%d] Exit %d\n",killid,killstat);
+		}
+		else{
+			printf("[%d] Killed (%d)\n",killid,killstat);
+		}
+	}
         //Null out all the old string references and free all the needed memory
         strcpy(cmd,"\0");
         background = 0;
